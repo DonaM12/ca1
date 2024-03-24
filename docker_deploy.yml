@@ -1,0 +1,56 @@
+---
+- name: Install Docker and configure Apache Docker container
+  hosts: your_remote_server
+  become: true
+  vars:
+    docker_network_subnet: "172.168.10.0/30"
+
+  tasks:
+    - name: Update apt cache and install necessary packages
+      apt:
+        update_cache: yes
+        name: "{{ packages }}"
+      vars:
+        packages:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: latest
+
+    - name: Install Docker Compose
+      pip:
+        name: docker-compose
+        state: latest
+
+    - name: Create Docker network
+      docker_network:
+        name: custom_network
+        driver: bridge
+        ipam_config:
+          - subnet: "{{ docker_network_subnet }}"
+
+    - name: Start Apache container
+      docker_container:
+        name: apache_container
+        image: httpd:latest
+        ports:
+          - "80:80"
+        networks:
+          - name: custom_network
+        state: started
